@@ -21,6 +21,7 @@ interface TransactionTableProps {
   }
   onPageChange: (page: number) => void
   loading: boolean
+  groupMap?: Record<string, string>
 }
 
 export default function TransactionTable({
@@ -29,7 +30,8 @@ export default function TransactionTable({
   onDelete,
   pagination,
   onPageChange,
-  loading
+  loading,
+  groupMap = {}
 }: TransactionTableProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -154,6 +156,24 @@ export default function TransactionTable({
                 color: 'var(--gray-700)',
                 borderRight: '1px solid var(--gray-200)'
               }}>
+                Natureza
+              </th>
+              <th style={{
+                padding: '1rem',
+                textAlign: 'left',
+                fontWeight: '500',
+                color: 'var(--gray-700)',
+                borderRight: '1px solid var(--gray-200)'
+              }}>
+                Grupo
+              </th>
+              <th style={{
+                padding: '1rem',
+                textAlign: 'left',
+                fontWeight: '500',
+                color: 'var(--gray-700)',
+                borderRight: '1px solid var(--gray-200)'
+              }}>
                 Conta/Cartão
               </th>
               <th style={{
@@ -251,6 +271,38 @@ export default function TransactionTable({
                     fontWeight: '500'
                   }}>
                     {transaction.category}
+                  </span>
+                </td>
+                
+                <td style={{
+                  padding: '1rem',
+                  borderRight: '1px solid var(--gray-200)'
+                }}>
+                  <span style={{
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    backgroundColor: transaction.nature === 'fixed' ? '#e0f2fe' : '#fef9c3',
+                    color: transaction.nature === 'fixed' ? '#075985' : '#854d0e'
+                  }}>
+                    {transaction.nature === 'fixed' ? 'Fixo' : 'Variável'}
+                  </span>
+                </td>
+
+                <td style={{
+                  padding: '1rem',
+                  borderRight: '1px solid var(--gray-200)'
+                }}>
+                  <span style={{
+                    padding: '0.25rem 0.5rem',
+                    borderRadius: '6px',
+                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    backgroundColor: transaction.groupId ? '#eef2ff' : '#ecfeff',
+                    color: transaction.groupId ? '#3730a3' : '#0f172a'
+                  }}>
+                    {transaction.groupId ? (groupMap[transaction.groupId] || 'Grupo') : 'Pessoal'}
                   </span>
                 </td>
                 

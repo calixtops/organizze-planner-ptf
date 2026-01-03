@@ -4,14 +4,11 @@ import ErrorBoundary from './components/ErrorBoundary'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
-import Transactions from './pages/Transactions'
-import Accounts from './pages/Accounts'
+import FixedExpenses from './pages/FixedExpenses'
+import VariableExpenses from './pages/VariableExpenses'
+import Installments from './pages/Installments'
+import Admin from './pages/Admin'
 import Layout from './components/Layout'
-import MonthlyExpenses from './pages/MonthlyExpenses'
-import ExpensesHistory from './pages/ExpensesHistory'
-import Investments from './pages/Investments'
-import Goals from './pages/Goals'
-import SummaryReport from './pages/SummaryReport'
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -45,13 +42,10 @@ function AppRoutes() {
       >
         <Route index element={<Navigate to="/dashboard" />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="monthly-expenses" element={<MonthlyExpenses />} />
-        <Route path="expenses-history" element={<ExpensesHistory />} />
-        <Route path="investments" element={<Investments />} />
-        <Route path="goals" element={<Goals />} />
-        <Route path="summary-report" element={<SummaryReport />} />
-        <Route path="transactions" element={<Transactions />} />
-        <Route path="accounts" element={<Accounts />} />
+        <Route path="fixed-expenses" element={<FixedExpenses />} />
+        <Route path="installments" element={<Installments />} />
+        <Route path="variable-expenses" element={<VariableExpenses />} />
+        <Route path="admin" element={<Admin />} />
       </Route>
     </Routes>
   );

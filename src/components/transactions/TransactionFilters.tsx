@@ -1,18 +1,21 @@
-import { Account, CreditCard } from '../../types'
+import { Account, CreditCard, Group } from '../../types'
 import { formatCurrency } from '../../utils/format'
 
 interface TransactionFiltersProps {
   filters: {
     type: string
+    nature: string
     category: string
     status: string
     accountId: string
     creditCardId: string
+    groupId: string
     startDate: string
     endDate: string
   }
   accounts: Account[]
   creditCards: CreditCard[]
+  groups: Group[]
   onFiltersChange: (filters: any) => void
 }
 
@@ -20,6 +23,7 @@ export default function TransactionFilters({
   filters,
   accounts,
   creditCards,
+  groups,
   onFiltersChange
 }: TransactionFiltersProps) {
   const handleFilterChange = (name: string, value: string) => {
@@ -30,9 +34,11 @@ export default function TransactionFilters({
     onFiltersChange({
       type: '',
       category: '',
+      nature: '',
       status: '',
       accountId: '',
       creditCardId: '',
+      groupId: '',
       startDate: '',
       endDate: ''
     })
@@ -94,6 +100,19 @@ export default function TransactionFilters({
         </div>
 
         <div className="form-group">
+          <label className="form-label">Natureza</label>
+          <select
+            className="form-select"
+            value={filters.nature}
+            onChange={(e) => handleFilterChange('nature', e.target.value)}
+          >
+            <option value="">Todas</option>
+            <option value="fixed">Fixo</option>
+            <option value="variable">Variável</option>
+          </select>
+        </div>
+
+        <div className="form-group">
           <label className="form-label">Categoria</label>
           <select
             className="form-select"
@@ -123,6 +142,22 @@ export default function TransactionFilters({
                 </optgroup>
               </>
             ) : null}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Grupo</label>
+          <select
+            className="form-select"
+            value={filters.groupId}
+            onChange={(e) => handleFilterChange('groupId', e.target.value)}
+          >
+            <option value="">Pessoal</option>
+            {groups?.map((group: Group) => (
+              <option key={group._id} value={group._id}>
+                {group.name}
+              </option>
+            ))}
           </select>
         </div>
 

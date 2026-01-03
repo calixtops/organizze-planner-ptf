@@ -35,14 +35,43 @@ export interface Transaction {
   description: string
   amount: number
   type: 'income' | 'expense'
+  nature?: 'fixed' | 'variable'
   category: string
   status: 'paid' | 'pending'
   date: string
   accountId?: string
   creditCardId?: string
   userId: string
+  groupId?: string
+  isFamily?: boolean
+  paidBy?: string
   aiCategory?: string
   aiExplanation?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface FamilyMember {
+  _id: string
+  name: string
+  userId: string
+  color?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RecurringExpense {
+  _id: string
+  userId: string
+  description: string
+  amount: number
+  category: string
+  dayOfMonth: number
+  groupId?: string
+  isFamily?: boolean
+  paidBy?: string
+  isActive: boolean
+  lastGenerated?: string
   createdAt: string
   updatedAt: string
 }
@@ -51,6 +80,41 @@ export interface Category {
   name: string
   type: 'income' | 'expense'
   color: string
+}
+
+export interface Group {
+  _id: string
+  name: string
+  ownerId: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Membership {
+  _id: string
+  userId: string
+  groupId: string
+  role: 'owner' | 'member'
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Installment {
+  _id: string
+  userId: string
+  groupId?: string
+  isFamily?: boolean
+  description: string
+  totalAmount: number
+  installments: number
+  category: string
+  startDate: string
+  currentPaid: number
+  status: 'active' | 'completed' | 'cancelled'
+  paymentDay: number
+  paidBy?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface DashboardData {

@@ -235,4 +235,44 @@ router.post('/change-password', authenticateToken, async (req, res, next) => {
   }
 })
 
+// @route   GET /api/users
+// @desc    Listar todos os usuários (Admin)
+// @access  Private
+router.get('/users', authenticateToken, async (req, res, next) => {
+  try {
+    const users = await User.find().select('-password').sort({ createdAt: -1 })
+    res.json(users)
+  } catch (error: any) {
+    next(error)
+  }
+})
+
+// @route   DELETE /api/users/:id
+// @desc    Deletar usuário (Admin)
+// @access  Private
+router.delete('/users/:id', authenticateToken, async (req, res, next) => {
+  try {
+    const userId = req.params.id
+
+    // Não permitir deletar o próprio usuário
+    if (userId === req.user!._id) {
+      return res.status(400).json({
+        error: 'Você não pode deletar seu próprio usuário'
+      })
+    }
+
+    const user = await User.findByIdAndDelete(userId)
+
+    if (!user) {
+      return res.status(404).json({
+        error: 'Usuário não encontrado'
+      })
+    }
+
+    res.json({ message: 'Usuário deletado com sucesso' })
+  } catch (error: any) {
+    next(error)
+  }
+})
+
 export default router

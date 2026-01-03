@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react'
-import api from '../services/api'
-import { DashboardData } from '../types'
+import api, { groupsService, familyMembersService } from '../services/api'
+import { DashboardData, Group, FamilyMember, Transaction, Installment } from '../types'
+import { installmentsService } from '../services/api'
 import BalanceCard from '../components/dashboard/BalanceCard'
 import MonthlyTrendNew from '../components/dashboard/MonthlyTrendNew'
 import CategoriesChartNew from '../components/dashboard/CategoriesChartNew'
 import RecentTransactions from '../components/dashboard/RecentTransactions'
-import QuickExpenseForm from '../components/dashboard/QuickExpenseForm'
+import QuickExpenseModal from '../components/dashboard/QuickExpenseModal'
+import MemberExpenses from '../components/dashboard/MemberExpenses'
+import MonthlyExpensesTable from '../components/dashboard/MonthlyExpensesTable'
+import ExpenseSummaryCard from '../components/dashboard/ExpenseSummaryCard'
+import ExpenseDistribution from '../components/dashboard/ExpenseDistribution'
+import InstallmentsStatus from '../components/dashboard/InstallmentsStatus'
+import CategoryBreakdown from '../components/dashboard/CategoryBreakdown'
 import FinancialInsights from '../components/ai/FinancialInsights'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { RefreshCw, TrendingUp, TrendingDown, Bot, Sparkles, Upload } from 'lucide-react'
@@ -20,10 +27,163 @@ export default function Dashboard() {
   const [showAIChat, setShowAIChat] = useState(false)
   const [showImporter, setShowImporter] = useState(false)
   const [showIncomeForm, setShowIncomeForm] = useState(false)
+  const [groups, setGroups] = useState<Group[]>([])
+  const [members, setMembers] = useState<FamilyMember[]>([])
+  const [groupId, setGroupId] = useState<string>('')
+  const [memberExpenses, setMemberExpenses] = useState<Array<{ member: string, amount: number }>>([])
+  const [personalExpenses, setPersonalExpenses] = useState(0)
+  const [monthlyExpenses, setMonthlyExpenses] = useState<Transaction[]>([])
+  const [loadingMonthlyExpenses, setLoadingMonthlyExpenses] = useState(false)
+  const [installments, setInstallments] = useState<Installment[]>([])
+  const [fixedExpenses, setFixedExpenses] = useState(0)
+  const [variableExpenses, setVariableExpenses] = useState(0)
+  const [installmentsExpenses, setInstallmentsExpenses] = useState(0)
+
+  useEffect(() => {
+    loadGroups()
+    loadMembers()
+  }, [])
 
   useEffect(() => {
     fetchDashboardData()
-  }, [])
+    loadMemberExpenses()
+    loadPersonalExpenses()
+    loadMonthlyExpenses()
+    loadInstallments()
+  }, [groupId])
+
+  const loadGroups = async () => {
+    try {
+      const response = await groupsService.getAll()
+      setGroups(response.data.groups || [])
+    } catch (error) {
+      console.error('Erro ao carregar grupos:', error)
+    } finally {
+      fetchDashboardData()
+    }
+  }
+
+  const loadMembers = async () => {
+    try {
+      const response = await familyMembersService.getAll()
+      setMembers(Array.isArray(response.data) ? response.data : [])
+    } catch (error) {
+      console.error('Erro ao carregar membros:', error)
+      setMembers([])
+    }
+  }
+
+  const loadMemberExpenses = async () => {
+    try {
+      const params: any = {
+        type: 'expense',
+        isFamily: true, // Apenas gastos familiares entram nas KPIs por membro
+        limit: 1000 // Buscar muitos para calcular os totais
+      }
+
+      const response = await api.get('/transactions', { params })
+      const transactions = response.data.transactions || response.data || []
+      
+      // Agrupar gastos por membro (apenas familiares)
+      const expensesByMember: Record<string, number> = {}
+      transactions.forEach((t: any) => {
+        if (t.paidBy && t.isFamily) {
+          expensesByMember[t.paidBy] = (expensesByMember[t.paidBy] || 0) + t.amount
+        }
+      })
+
+      const result = Object.entries(expensesByMember).map(([member, amount]) => ({
+        member,
+        amount
+      })).sort((a, b) => b.amount - a.amount)
+
+      setMemberExpenses(result)
+    } catch (error) {
+      console.error('Erro ao carregar gastos por membro:', error)
+      setMemberExpenses([])
+    }
+  }
+
+  const loadPersonalExpenses = async () => {
+    try {
+      const params: any = {
+        type: 'expense',
+        isFamily: false, // Apenas gastos pessoais
+        limit: 1000
+      }
+
+      const response = await api.get('/transactions', { params })
+      const transactions = response.data.transactions || response.data || []
+      
+      const total = transactions.reduce((sum: number, t: any) => sum + t.amount, 0)
+      setPersonalExpenses(total)
+    } catch (error) {
+      console.error('Erro ao carregar gastos pessoais:', error)
+      setPersonalExpenses(0)
+    }
+  }
+
+  const loadMonthlyExpenses = async () => {
+    try {
+      setLoadingMonthlyExpenses(true)
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+
+      const params: any = {
+        type: 'expense',
+        startDate: startOfMonth.toISOString(),
+        endDate: endOfMonth.toISOString(),
+        limit: 500, // Limite alto para pegar todos os gastos do mês
+        sort: 'date' // Ordenar por data
+      }
+
+      const response = await api.get('/transactions', { params })
+      const transactions = response.data.transactions || response.data || []
+      
+      // Ordenar por data (mais recente primeiro)
+      const sorted = transactions.sort((a: Transaction, b: Transaction) => {
+        return new Date(b.date).getTime() - new Date(a.date).getTime()
+      })
+
+      setMonthlyExpenses(sorted)
+
+      // Calcular totais por tipo
+      const fixed = sorted
+        .filter(t => t.nature === 'fixed' && !t.installmentInfo)
+        .reduce((sum, t) => sum + t.amount, 0)
+      
+      const variable = sorted
+        .filter(t => t.nature === 'variable')
+        .reduce((sum, t) => sum + t.amount, 0)
+      
+      const installments = sorted
+        .filter(t => t.installmentInfo)
+        .reduce((sum, t) => sum + t.amount, 0)
+
+      setFixedExpenses(fixed)
+      setVariableExpenses(variable)
+      setInstallmentsExpenses(installments)
+    } catch (error) {
+      console.error('Erro ao carregar gastos mensais:', error)
+      setMonthlyExpenses([])
+      setFixedExpenses(0)
+      setVariableExpenses(0)
+      setInstallmentsExpenses(0)
+    } finally {
+      setLoadingMonthlyExpenses(false)
+    }
+  }
+
+  const loadInstallments = async () => {
+    try {
+      const response = await installmentsService.getAll()
+      setInstallments(Array.isArray(response.data) ? response.data : [])
+    } catch (error) {
+      console.error('Erro ao carregar parcelamentos:', error)
+      setInstallments([])
+    }
+  }
 
   const fetchDashboardData = async (showRefreshing = false) => {
     try {
@@ -35,7 +195,9 @@ export default function Dashboard() {
       
       // Tentar buscar dados da API
       try {
-        const response = await api.get('/transactions/summary/dashboard')
+        const response = await api.get('/transactions/summary/dashboard', {
+          params: groupId ? { groupId } : undefined
+        })
         setData(response.data)
         setError('')
       } catch (apiError) {
@@ -57,6 +219,10 @@ export default function Dashboard() {
 
   const handleTransactionAdded = () => {
     fetchDashboardData(true)
+    loadMemberExpenses()
+    loadPersonalExpenses()
+    loadMonthlyExpenses()
+    loadInstallments()
   }
 
   const handleClearAllTransactions = async () => {
@@ -214,7 +380,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <div style={{ 
+        <div style={{ 
         maxWidth: '1400px', 
         margin: '0 auto',
         padding: '0 1rem'
@@ -241,13 +407,32 @@ export default function Dashboard() {
             }}>
               Dashboard
             </h1>
-            <p style={{
-              color: 'var(--gray-600)',
-              fontSize: '1.125rem',
-              fontWeight: '500'
-            }}>
-              Visão geral das suas finanças
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <p style={{
+                color: 'var(--gray-600)',
+                fontSize: '1.125rem',
+                fontWeight: '500',
+                margin: 0
+              }}>
+                Visão geral das suas finanças
+              </p>
+              <select
+                value={groupId}
+                onChange={(e) => setGroupId(e.target.value)}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--gray-200)',
+                  backgroundColor: 'white',
+                  fontWeight: 600
+                }}
+              >
+                <option value="">Pessoal</option>
+                {groups.map((g) => (
+                  <option key={g._id} value={g._id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
           
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -402,184 +587,127 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Cards de resumo - Layout compacto */}
-        <div className="balance-cards" style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '1rem',
-          marginBottom: '2rem'
-        }}>
-          <BalanceCard
-            title="Saldo Total"
-            value={data.totalBalance}
-            icon="💰"
-            color="var(--primary-dark)"
-          />
-          <BalanceCard
-            title="Receitas do Mês"
-            value={data.monthlyIncome}
-            icon="📈"
-            color="var(--success)"
-          />
-          <BalanceCard
-            title="Despesas do Mês"
-            value={data.monthlyExpenses}
-            icon="📉"
-            color="var(--error)"
-          />
-          <BalanceCard
-            title="Saldo do Mês"
-            value={data.monthlyBalance}
-            icon="⚖️"
-            color={data.monthlyBalance >= 0 ? 'var(--success)' : 'var(--error)'}
-          />
-        </div>
-
-        {/* Gráfico de Tendência Mensal - Destaque principal */}
-        <div style={{
-          backgroundColor: 'var(--white)',
-          borderRadius: '12px',
-          padding: '2rem',
-          marginBottom: '2rem',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-          border: '1px solid var(--gray-200)'
-        }}>
+        {/* Nova Seção: Análise Visual dos Gastos Mensais */}
+        <div style={{ marginBottom: '2rem' }}>
+          {/* Cards de Resumo */}
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '1.5rem'
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+            gap: '20px',
+            marginBottom: '2rem'
           }}>
-            <div>
-              <h2 style={{
-                fontSize: '1.5rem',
-                fontWeight: '700',
-                color: 'var(--gray-800)',
-                margin: 0,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                📊 Tendência Mensal
-              </h2>
-              <p style={{
-                fontSize: '0.875rem',
-                color: 'var(--gray-600)',
-                margin: '0.25rem 0 0 0'
-              }}>
-                Evolução das suas finanças nos últimos 3 meses
-              </p>
-            </div>
-            <div style={{
-              display: 'flex',
-              gap: '1rem',
-              alignItems: 'center'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.875rem',
-                color: 'var(--gray-600)'
-              }}>
-                <div style={{
-                  width: '12px',
-                  height: '12px',
-                  backgroundColor: 'var(--success)',
-                  borderRadius: '2px'
-                }}></div>
-                Receitas
-              </div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.875rem',
-                color: 'var(--gray-600)'
-              }}>
-                <div style={{
-                  width: '12px',
-                  height: '12px',
-                  backgroundColor: 'var(--error)',
-                  borderRadius: '2px'
-                }}></div>
-                Despesas
-              </div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontSize: '0.875rem',
-                color: 'var(--gray-600)'
-              }}>
-                <div style={{
-                  width: '12px',
-                  height: '12px',
-                  backgroundColor: 'var(--primary-dark)',
-                  borderRadius: '2px'
-                }}></div>
-                Saldo
-              </div>
-            </div>
-          </div>
-          <div style={{ height: '400px' }}>
-            <MonthlyTrendNew data={data.monthlyTrend} />
-          </div>
-        </div>
-
-        {/* Gráfico de Categorias */}
-        <div style={{
-          backgroundColor: 'var(--white)',
-          borderRadius: '12px',
-          padding: '2rem',
-          marginBottom: '2rem',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-          border: '1px solid var(--gray-200)'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '1.5rem'
-          }}>
-            <div>
-              <h2 style={{
-                fontSize: '1.5rem',
-                fontWeight: '700',
-                color: 'var(--gray-800)',
-                margin: 0,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                🎯 Análise por Categorias
-              </h2>
-              <p style={{
-                fontSize: '0.875rem',
-                color: 'var(--gray-600)',
-                margin: '0.25rem 0 0 0'
-              }}>
-                Distribuição dos seus gastos e receitas por categoria
-              </p>
-            </div>
-          </div>
-          <div style={{ height: '400px' }}>
-            <CategoriesChartNew 
-              expensesData={data.categoriesBreakdown.expenses}
-              incomeData={data.categoriesBreakdown.income}
+            <ExpenseSummaryCard
+              title="Gastos Fixos"
+              amount={fixedExpenses}
+              icon="🏠"
+              color="#e67e22"
+              subtitle="Gastos recorrentes do mês"
+            />
+            <ExpenseSummaryCard
+              title="Gastos Correntes"
+              amount={variableExpenses}
+              icon="💸"
+              color="#3498db"
+              subtitle="Gastos variáveis do mês"
+            />
+            <ExpenseSummaryCard
+              title="Parcelamentos"
+              amount={installmentsExpenses}
+              icon="💳"
+              color="#9b59b6"
+              subtitle="Parcelas pagas este mês"
+            />
+            <ExpenseSummaryCard
+              title="Total de Gastos"
+              amount={fixedExpenses + variableExpenses + installmentsExpenses}
+              icon="📊"
+              color="#e74c3c"
+              subtitle="Soma de todos os gastos"
             />
           </div>
+
+          {/* Grid de Análise Visual */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+            gap: '20px',
+            marginBottom: '2rem'
+          }}>
+            {/* Distribuição dos Gastos */}
+            <ExpenseDistribution
+              fixed={fixedExpenses}
+              variable={variableExpenses}
+              installments={installmentsExpenses}
+            />
+
+            {/* Status dos Parcelamentos */}
+            <InstallmentsStatus installments={installments} />
+          </div>
+
+          {/* Breakdown por Categoria */}
+          <CategoryBreakdown expenses={monthlyExpenses} members={members} />
+        </div>
+
+        {/* KPI de gastos por membro */}
+        {memberExpenses.length > 0 && (
+          <MemberExpenses 
+            memberExpenses={memberExpenses}
+            members={members}
+            totalExpenses={memberExpenses.reduce((sum, me) => sum + me.amount, 0)}
+          />
+        )}
+
+        {/* Seção de Gastos Pessoais */}
+        {personalExpenses > 0 && (
+          <div style={{
+            backgroundColor: 'white',
+            padding: '25px',
+            borderRadius: '12px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            marginTop: '20px'
+          }}>
+            <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', fontWeight: 'bold' }}>
+              👤 Gastos Pessoais
+            </h3>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '20px',
+              backgroundColor: '#f8f9fa',
+              borderRadius: '8px'
+            }}>
+              <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#666' }}>
+                Total de Gastos Pessoais
+              </span>
+              <span style={{ fontSize: '32px', fontWeight: 'bold', color: '#e74c3c' }}>
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(personalExpenses)}
+              </span>
+            </div>
+            <p style={{ marginTop: '15px', fontSize: '13px', color: '#999', textAlign: 'center' }}>
+              Gastos marcados como "Pessoal" não entram nas KPIs familiares
+            </p>
+          </div>
+        )}
+
+        {/* Tabela de Gastos Mensais */}
+        <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+          <MonthlyExpensesTable 
+            expenses={monthlyExpenses}
+            members={members}
+            loading={loadingMonthlyExpenses}
+          />
         </div>
 
         {/* Transações recentes */}
-        <RecentTransactions />
+        <RecentTransactions groupId={groupId || undefined} />
         
         {/* Insights Financeiros - Temporariamente desabilitado */}
         {/* <FinancialInsights /> */}
       </div>
 
-      {/* Quick Expense Form */}
-      <QuickExpenseForm onTransactionAdded={handleTransactionAdded} />
+      {/* Quick Expense Modal */}
+      <QuickExpenseModal onExpenseAdded={handleTransactionAdded} />
 
       {/* AI Chat Modal */}
       {showAIChat && (

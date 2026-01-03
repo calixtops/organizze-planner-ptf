@@ -10,19 +10,23 @@ interface PopulatedTransaction extends Omit<Transaction, 'accountId' | 'creditCa
   creditCardId?: CreditCard
 }
 
-export default function RecentTransactions() {
+interface Props {
+  groupId?: string
+}
+
+export default function RecentTransactions({ groupId }: Props) {
   const [transactions, setTransactions] = useState<PopulatedTransaction[]>([])
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
   useEffect(() => {
     fetchRecentTransactions()
-  }, [])
+  }, [groupId])
 
   const fetchRecentTransactions = async () => {
     try {
       setLoading(true)
-      const response = await api.get('/transactions?limit=5&page=1')
+      const response = await api.get('/transactions', { params: { limit: 5, page: 1, groupId } })
       setTransactions(response.data.transactions)
     } catch (error) {
       console.error('Erro ao carregar transações recentes:', error)
@@ -165,6 +169,8 @@ export default function RecentTransactions() {
                     {transaction.category}
                     {transaction.accountId && ` • ${transaction.accountId.name}`}
                     {transaction.creditCardId && ` • ${transaction.creditCardId.name}`}
+                    {transaction.nature && ` • ${transaction.nature === 'fixed' ? 'Fixo' : 'Variável'}`}
+                    {transaction.groupId && ' • Grupo'}
                   </p>
                 </div>
               </div>

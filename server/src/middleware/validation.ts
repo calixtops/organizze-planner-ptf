@@ -142,6 +142,11 @@ export const validateTransaction = [
     .isIn(['income', 'expense'])
     .withMessage('Tipo deve ser: income ou expense'),
   
+  body('nature')
+    .optional()
+    .isIn(['fixed', 'variable'])
+    .withMessage('Natureza deve ser: fixed ou variable'),
+  
   body('category')
     .trim()
     .isLength({ min: 1, max: 50 })
@@ -166,6 +171,11 @@ export const validateTransaction = [
     .optional()
     .isMongoId()
     .withMessage('ID do cartão inválido'),
+  
+  body('groupId')
+    .optional()
+    .isMongoId()
+    .withMessage('ID do grupo inválido'),
   
   // Validação customizada para garantir que pelo menos uma conta está associada
   body().custom((body) => {
@@ -212,6 +222,37 @@ export const validateDateRange = [
     .isISO8601()
     .withMessage('Data de fim deve estar no formato ISO 8601'),
   
+  handleValidationErrors
+]
+
+// Validações para grupos
+export const validateGroupCreate = [
+  body('name')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Nome do grupo deve ter entre 2 e 100 caracteres'),
+  handleValidationErrors
+]
+
+export const validateGroupId = [
+  param('id')
+    .isMongoId()
+    .withMessage('ID do grupo inválido'),
+  handleValidationErrors
+]
+
+export const validateMemberAdd = [
+  param('id')
+    .isMongoId()
+    .withMessage('ID do grupo inválido'),
+  body('username')
+    .trim()
+    .isLength({ min: 3, max: 20 })
+    .withMessage('Nome de usuário deve ter entre 3 e 20 caracteres'),
+  body('role')
+    .optional()
+    .isIn(['owner', 'member'])
+    .withMessage('Papel deve ser owner ou member'),
   handleValidationErrors
 ]
 

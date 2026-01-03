@@ -30,9 +30,21 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      console.warn('⚠️ Erro 401: Token inválido ou expirado')
       // Token expirado ou inválido
-      localStorage.removeItem('token')
-      window.location.href = '/login'
+      const currentPath = window.location.pathname
+      
+      // Só redirecionar se não estivermos já na página de login
+      if (currentPath !== '/login' && currentPath !== '/register') {
+        console.log('🔄 Redirecionando para login...')
+        localStorage.removeItem('token')
+        delete api.defaults.headers.common['Authorization']
+        
+        // Usar setTimeout para evitar loop de redirecionamento
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 100)
+      }
     }
     return Promise.reject(error)
   }
@@ -79,7 +91,45 @@ export const transactionsService = {
   getCategoriesBreakdown: (params?: any) => api.get('/transactions/summary/categories', { params }),
 }
 
+export const groupsService = {
+  getAll: () => api.get('/groups'),
+  create: (data: any) => api.post('/groups', data),
+  getMembers: (groupId: string) => api.get(`/groups/${groupId}/members`),
+  addMember: (groupId: string, data: any) => api.post(`/groups/${groupId}/members`, data),
+}
+
+export const installmentsService = {
+  getAll: (params?: any) => api.get('/installments', { params }),
+  getById: (id: string) => api.get(`/installments/${id}`),
+  create: (data: any) => api.post('/installments', data),
+  update: (id: string, data: any) => api.put(`/installments/${id}`, data),
+  delete: (id: string) => api.delete(`/installments/${id}`),
+  pay: (id: string, paymentDate?: string) => api.put(`/installments/${id}/pay`, { paymentDate }),
+  markPaid: (id: string, paidCount: number) => api.put(`/installments/${id}/mark-paid`, { paidCount }),
+  cancel: (id: string) => api.put(`/installments/${id}/cancel`),
+}
+
+export const familyMembersService = {
+  getAll: () => api.get('/family-members'),
+  create: (data: any) => api.post('/family-members', data),
+  update: (id: string, data: any) => api.put(`/family-members/${id}`, data),
+  delete: (id: string) => api.delete(`/family-members/${id}`),
+}
+
+export const recurringExpensesService = {
+  getAll: (params?: any) => api.get('/recurring-expenses', { params }),
+  create: (data: any) => api.post('/recurring-expenses', data),
+  update: (id: string, data: any) => api.put(`/recurring-expenses/${id}`, data),
+  delete: (id: string) => api.delete(`/recurring-expenses/${id}`),
+  generate: (id: string, month?: number, year?: number) => 
+    api.post(`/recurring-expenses/${id}/generate`, { month, year }),
+  generateAll: (month?: number, year?: number) => 
+    api.post('/recurring-expenses/generate-all', { month, year }),
+}
+
 export const aiService = {
-  suggestCategory: (description: string, amount: number) =>
-    api.post('/ai/suggest-category', { description, amount }),
+  suggestCategory: (description: string, amount: number, type?: 'income' | 'expense') =>
+    api.post('/ai/suggest-category', { description, amount, type }),
+  chat: (message: string, userContext?: any) =>
+    api.post('/ai/chat', { message, userContext }),
 }

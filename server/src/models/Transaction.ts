@@ -6,15 +6,24 @@ export interface ITransaction extends Document {
   description: string
   amount: number
   type: 'income' | 'expense'
+  nature?: 'fixed' | 'variable'
   category: string
   status: 'paid' | 'pending'
   date: Date
   accountId?: string
   creditCardId?: string
   userId: string
+  groupId?: string // Mantido para compatibilidade
+  isFamily?: boolean // true = Familiar, false/undefined = Pessoal
+  paidBy?: string // ID ou nome de quem pagou (para controle familiar)
   aiCategory?: string // Categoria sugerida pela IA
   aiExplanation?: string // Explicação da IA para a categoria
   aiConfidence?: number // Confiança da IA (0-1)
+  installmentInfo?: {
+    planId: string
+    current: number
+    total: number
+  }
   createdAt: Date
   updatedAt: Date
 }
@@ -44,6 +53,14 @@ const TransactionSchema = new Schema<ITransaction>({
       values: ['income', 'expense'],
       message: 'Tipo deve ser: income ou expense'
     }
+  },
+  nature: {
+    type: String,
+    enum: {
+      values: ['fixed', 'variable'],
+      message: 'Natureza deve ser: fixed ou variable'
+    },
+    default: 'variable'
   },
   category: {
     type: String,
@@ -78,6 +95,27 @@ const TransactionSchema = new Schema<ITransaction>({
     required: [true, 'ID do usuário é obrigatório'],
     ref: 'User'
   },
+  groupId: {
+    type: String,
+    ref: 'Group'
+  },
+  isFamily: {
+    type: Boolean,
+    default: false
+  },
+  paidBy: {
+    type: String,
+    trim: true,
+    maxlength: [100, 'Nome de quem pagou não pode ter mais de 100 caracteres']
+  },
+  installmentInfo: {
+    type: {
+      planId: { type: String, required: true },
+      current: { type: Number, required: true, min: 1 },
+      total: { type: Number, required: true, min: 1 }
+    },
+    required: false
+  },
   aiCategory: {
     type: String,
     trim: true,
@@ -101,6 +139,8 @@ const TransactionSchema = new Schema<ITransaction>({
 TransactionSchema.index({ userId: 1 })
 TransactionSchema.index({ userId: 1, date: -1 })
 TransactionSchema.index({ userId: 1, type: 1 })
+TransactionSchema.index({ groupId: 1, date: -1 })
+TransactionSchema.index({ nature: 1 })
 TransactionSchema.index({ userId: 1, category: 1 })
 TransactionSchema.index({ userId: 1, status: 1 })
 TransactionSchema.index({ accountId: 1 })
@@ -111,14 +151,6 @@ TransactionSchema.pre('save', function(next) {
   if (this.isModified('amount')) {
     const amountDecimal = new Decimal(this.amount)
     this.amount = amountDecimal.toNumber()
-  }
-  next()
-})
-
-// Validação customizada para verificar se pelo menos uma conta está associada
-TransactionSchema.pre('save', function(next) {
-  if (!this.accountId && !this.creditCardId) {
-    return next(new Error('Transação deve estar associada a uma conta ou cartão de crédito'))
   }
   next()
 })
@@ -194,6 +226,96 @@ TransactionSchema.statics.getCategoryBreakdown = async function(
   ]
   
   return await this.aggregate(pipeline)
+}
+
+TransactionSchema.statics.getDashboardSummary = async function(
+  userId: string,
+  options?: { groupId?: string }
+) {
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+
+  const matchBase: any = { status: 'paid' }
+  if (options?.groupId) {
+    matchBase.groupId = options.groupId
+  } else {
+    matchBase.userId = userId
+  }
+
+  const monthlyMatch = { ...matchBase, date: { $gte: startOfMonth, $lte: endOfMonth } }
+
+  const [monthlyIncome] = await this.aggregate([
+    { $match: { ...monthlyMatch, type: 'income' } },
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ])
+
+  const [monthlyExpenses] = await this.aggregate([
+    { $match: { ...monthlyMatch, type: 'expense' } },
+    { $group: { _id: null, total: { $sum: '$amount' } } }
+  ])
+
+  const categoriesBreakdownExpense = await this.aggregate([
+    { $match: { ...monthlyMatch, type: 'expense' } },
+    { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+    { $sort: { total: -1 } }
+  ])
+
+  const categoriesBreakdownIncome = await this.aggregate([
+    { $match: { ...monthlyMatch, type: 'income' } },
+    { $group: { _id: '$category', total: { $sum: '$amount' }, count: { $sum: 1 } } },
+    { $sort: { total: -1 } }
+  ])
+
+  // Últimos 6 meses
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+  const monthlyTrendRaw = await this.aggregate([
+    { $match: { ...matchBase, date: { $gte: sixMonthsAgo, $lte: endOfMonth } } },
+    {
+      $group: {
+        _id: { $dateToString: { format: '%Y-%m', date: '$date' } },
+        income: {
+          $sum: { $cond: [{ $eq: ['$type', 'income'] }, '$amount', 0] }
+        },
+        expenses: {
+          $sum: { $cond: [{ $eq: ['$type', 'expense'] }, '$amount', 0] }
+        }
+      }
+    },
+    { $sort: { _id: 1 } }
+  ])
+
+  // Garantir meses contínuos
+  const monthlyTrend: Array<{ month: string, income: number, expenses: number, balance: number }> = []
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    const found = monthlyTrendRaw.find((item: any) => item._id === key)
+    const income = found?.income || 0
+    const expenses = found?.expenses || 0
+    monthlyTrend.push({
+      month: key,
+      income,
+      expenses,
+      balance: income - expenses
+    })
+  }
+
+  const incomeTotal = monthlyIncome?.total || 0
+  const expensesTotal = monthlyExpenses?.total || 0
+  const monthlyBalance = incomeTotal - expensesTotal
+
+  return {
+    totalBalance: monthlyBalance,
+    monthlyIncome: incomeTotal,
+    monthlyExpenses: expensesTotal,
+    monthlyBalance,
+    categoriesBreakdown: {
+      expenses: categoriesBreakdownExpense,
+      income: categoriesBreakdownIncome
+    },
+    monthlyTrend
+  }
 }
 
 export default mongoose.model<ITransaction>('Transaction', TransactionSchema)

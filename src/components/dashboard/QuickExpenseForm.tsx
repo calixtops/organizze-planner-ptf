@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, X, DollarSign, Tag, Calendar, Sparkles } from 'lucide-react'
-import api from '../../services/api'
+import api, { groupsService } from '../../services/api'
 import { validationRules, validate } from '../../utils/validation'
 import { geminiService } from '../../services/gemini'
 
@@ -26,12 +26,27 @@ export default function QuickExpenseForm({ onTransactionAdded }: QuickExpenseFor
   const [loading, setLoading] = useState(false)
   const [aiSuggesting, setAiSuggesting] = useState(false)
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
+  const [groups, setGroups] = useState<Array<{ _id: string, name: string }>>([])
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
     category: '',
-    accountId: ''
+    accountId: '',
+    nature: 'variable',
+    groupId: ''
   })
+
+  useEffect(() => {
+    const loadGroups = async () => {
+      try {
+        const response = await groupsService.getAll()
+        setGroups(response.data.groups || [])
+      } catch (error) {
+        console.error('Erro ao carregar grupos:', error)
+      }
+    }
+    loadGroups()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,6 +80,8 @@ export default function QuickExpenseForm({ onTransactionAdded }: QuickExpenseFor
         description: formData.description,
         amount: parseFloat(formData.amount),
         type: 'expense',
+        nature: formData.nature,
+        groupId: formData.groupId || undefined,
         category: formData.category,
         accountId: formData.accountId || undefined,
         date: new Date().toISOString()
@@ -75,7 +92,9 @@ export default function QuickExpenseForm({ onTransactionAdded }: QuickExpenseFor
         description: '',
         amount: '',
         category: '',
-        accountId: ''
+        accountId: '',
+        nature: 'variable',
+        groupId: ''
       })
       setErrors({})
       setIsOpen(false)
@@ -434,6 +453,78 @@ export default function QuickExpenseForm({ onTransactionAdded }: QuickExpenseFor
                   {errors.ai}
                 </p>
               )}
+            </div>
+
+            {/* Natureza (Fixo/Variável) */}
+            <div>
+              <label style={{
+                marginBottom: '0.5rem',
+                color: 'var(--gray-700)',
+                fontWeight: '600',
+                fontSize: '0.875rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                Tipo de gasto
+              </label>
+              <select
+                value={formData.nature}
+                onChange={(e) => setFormData({ ...formData, nature: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '2px solid var(--gray-200)',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  backgroundColor: 'white',
+                  transition: 'border-color 0.2s ease',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--accent-orange)'}
+                onBlur={(e) => e.target.style.borderColor = 'var(--gray-200)'}
+              >
+                <option value="variable">Variável (gasto do mês)</option>
+                <option value="fixed">Fixo</option>
+              </select>
+            </div>
+
+            {/* Grupo */}
+            <div>
+              <label style={{
+                marginBottom: '0.5rem',
+                color: 'var(--gray-700)',
+                fontWeight: '600',
+                fontSize: '0.875rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                Grupo (opcional)
+              </label>
+              <select
+                value={formData.groupId}
+                onChange={(e) => setFormData({ ...formData, groupId: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '2px solid var(--gray-200)',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  backgroundColor: 'white',
+                  transition: 'border-color 0.2s ease',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+                onFocus={(e) => e.target.style.borderColor = 'var(--accent-orange)'}
+                onBlur={(e) => e.target.style.borderColor = 'var(--gray-200)'}
+              >
+                <option value="">Pessoal</option>
+                {groups.map(group => (
+                  <option key={group._id} value={group._id}>{group.name}</option>
+                ))}
+              </select>
             </div>
 
             {/* Date */}

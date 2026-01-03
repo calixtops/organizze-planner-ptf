@@ -1,13 +1,15 @@
-import OpenAI from 'openai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import Transaction from '../models/Transaction.js'
 
-if (!process.env.OPENAI_API_KEY) {
-  console.warn('⚠️  OPENAI_API_KEY não definida. Funcionalidade de IA será desabilitada.')
+if (!process.env.GEMINI_API_KEY) {
+  console.warn('⚠️  GEMINI_API_KEY não definida. Funcionalidade de IA será desabilitada.')
+  console.warn('   Verifique se a chave está no arquivo .env e reinicie o servidor.')
+} else {
+  console.log('✅ GEMINI_API_KEY carregada com sucesso')
 }
 
-const openai = process.env.OPENAI_API_KEY ? new (OpenAI as any)({
-  apiKey: process.env.OPENAI_API_KEY,
-}) : null
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null
+const model = genAI ? genAI.getGenerativeModel({ model: 'gemini-pro' }) : null
 
 export interface AISuggestion {
   category: string
@@ -94,7 +96,7 @@ async function findSimilarTransactions(
 }
 
 /**
- * Gera sugestão de categoria usando OpenAI
+ * Gera sugestão de categoria usando Gemini
  */
 async function generateCategorySuggestion(
   description: string,
@@ -102,15 +104,15 @@ async function generateCategorySuggestion(
   type: 'income' | 'expense',
   similarTransactions: any[]
 ): Promise<AISuggestion> {
-  if (!openai) {
-    // Fallback para categorias padrão se OpenAI não estiver configurada
+  if (!model) {
+    // Fallback para categorias padrão se Gemini não estiver configurada
     const categories = DEFAULT_CATEGORIES[type]
     const randomCategory = categories[Math.floor(Math.random() * categories.length)]
     
     return {
       category: randomCategory,
       confidence: 0.5,
-      explanation: 'Categoria sugerida automaticamente (OpenAI não configurada)'
+      explanation: 'Categoria sugerida automaticamente (Gemini não configurada)'
     }
   }
 
@@ -121,65 +123,70 @@ async function generateCategorySuggestion(
       .map(t => `"${t.description}" -> ${t.category}`)
       .join('\n')
 
-    const systemPrompt = `Você é um assistente especializado em categorização de transações financeiras pessoais.
+    const categoriesList = type === 'income' 
+      ? DEFAULT_CATEGORIES.income.join(', ') 
+      : DEFAULT_CATEGORIES.expense.join(', ')
+
+    const prompt = `Você é um assistente especializado em categorização de transações financeiras pessoais.
 
 Categorias disponíveis para ${type === 'income' ? 'RECEITAS' : 'DESPESAS'}:
-${type === 'income' ? DEFAULT_CATEGORIES.income.join(', ') : DEFAULT_CATEGORIES.expense.join(', ')}
+${categoriesList}
 
-Suas tarefas:
-1. Analisar a descrição da transação
-2. Considerar o valor da transação (pode ajudar a determinar a categoria)
-3. Usar as transações similares como referência
-4. Sugerir a categoria mais apropriada
-5. Explicar brevemente o motivo da escolha
-6. Dar uma pontuação de confiança de 0 a 1
+Analise a seguinte transação e sugira a categoria mais apropriada:
 
-Responda APENAS em formato JSON válido:
-{
-  "category": "Nome da categoria",
-  "confidence": 0.95,
-  "explanation": "Explicação breve do motivo"
-}`
-
-    const userPrompt = `Transação para categorizar:
 Descrição: "${description}"
 Valor: R$ ${amount.toFixed(2)}
 Tipo: ${type === 'income' ? 'Receita' : 'Despesa'}
 
-Transações similares do usuário:
-${contextTransactions || 'Nenhuma transação similar encontrada'}`
+${contextTransactions ? `Transações similares do usuário:\n${contextTransactions}` : 'Nenhuma transação similar encontrada'}
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.3,
-      max_tokens: 200
-    })
+Responda APENAS em formato JSON válido, sem markdown ou código:
+{
+  "category": "Nome da categoria exata da lista acima",
+  "confidence": 0.95,
+  "explanation": "Explicação breve do motivo em português"
+}`
 
-    const response = completion.choices[0]?.message?.content
-    if (!response) {
-      throw new Error('Resposta vazia da OpenAI')
-    }
+    const result = await model.generateContent(prompt)
+    const response = result.response
+    const text = response.text()
+
+    // Extrair JSON da resposta (pode vir com markdown)
+    let jsonText = text.trim()
+    // Remover markdown code blocks se existirem
+    jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
 
     // Tentar fazer parse do JSON
     let suggestion: AISuggestion
     try {
-      suggestion = JSON.parse(response)
+      suggestion = JSON.parse(jsonText)
     } catch (parseError) {
-      console.error('Erro ao fazer parse da resposta da OpenAI:', response)
-      throw new Error('Resposta inválida da OpenAI')
+      console.error('Erro ao fazer parse da resposta do Gemini:', text)
+      // Tentar extrair JSON manualmente
+      const jsonMatch = jsonText.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        suggestion = JSON.parse(jsonMatch[0])
+      } else {
+        throw new Error('Resposta inválida do Gemini')
+      }
     }
 
     // Validar resposta
     if (!suggestion.category || typeof suggestion.confidence !== 'number' || !suggestion.explanation) {
-      throw new Error('Formato de resposta inválido da OpenAI')
+      throw new Error('Formato de resposta inválido do Gemini')
     }
 
     // Garantir que a confiança esteja entre 0 e 1
     suggestion.confidence = Math.max(0, Math.min(1, suggestion.confidence))
+
+    // Validar se a categoria está na lista
+    const validCategories = DEFAULT_CATEGORIES[type]
+    if (!validCategories.includes(suggestion.category)) {
+      // Se a categoria sugerida não estiver na lista, usar "Outros"
+      console.warn(`Categoria "${suggestion.category}" não está na lista válida. Usando "Outros".`)
+      suggestion.category = 'Outros'
+      suggestion.confidence = Math.min(suggestion.confidence, 0.7)
+    }
 
     return suggestion
 
@@ -267,5 +274,86 @@ export async function learnFromFeedback(
 
   } catch (error) {
     console.error('Erro ao processar feedback:', error)
+  }
+}
+
+/**
+ * Chat com assistente financeiro usando Gemini
+ */
+export async function chatWithAssistant(
+  message: string,
+  userContext?: {
+    monthlyIncome?: number
+    monthlyExpenses?: number
+    categories?: string[]
+    recentTransactions?: any[]
+  }
+): Promise<string> {
+  if (!model) {
+    return 'Desculpe, o assistente financeiro não está disponível no momento. Verifique se a chave da API Gemini está configurada.'
+  }
+
+  try {
+    // Construir contexto para o prompt
+    let contextInfo = ''
+    
+    if (userContext) {
+      const contextParts: string[] = []
+      
+      if (userContext.monthlyIncome !== undefined) {
+        contextParts.push(`Renda mensal: R$ ${userContext.monthlyIncome.toFixed(2)}`)
+      }
+      
+      if (userContext.monthlyExpenses !== undefined) {
+        contextParts.push(`Gastos mensais: R$ ${userContext.monthlyExpenses.toFixed(2)}`)
+        
+        if (userContext.monthlyIncome !== undefined && userContext.monthlyIncome > 0) {
+          const savingsRate = ((userContext.monthlyIncome - userContext.monthlyExpenses) / userContext.monthlyIncome) * 100
+          contextParts.push(`Taxa de poupança: ${savingsRate.toFixed(1)}%`)
+        }
+      }
+      
+      if (userContext.categories && userContext.categories.length > 0) {
+        contextParts.push(`Categorias de gastos: ${userContext.categories.join(', ')}`)
+      }
+      
+      if (userContext.recentTransactions && userContext.recentTransactions.length > 0) {
+        contextParts.push(`Transações recentes: ${userContext.recentTransactions.length} transações`)
+      }
+      
+      if (contextParts.length > 0) {
+        contextInfo = `\n\nContexto financeiro do usuário:\n${contextParts.join('\n')}`
+      }
+    }
+
+    const systemPrompt = `Você é um assistente financeiro pessoal especializado em ajudar pessoas a gerenciarem suas finanças. 
+
+Sua missão é:
+- Fornecer conselhos práticos e acionáveis sobre finanças pessoais
+- Ajudar com planejamento de orçamento e economia
+- Sugerir estratégias de investimento adequadas ao perfil do usuário
+- Analisar padrões de gastos e identificar oportunidades de economia
+- Responder perguntas sobre educação financeira de forma clara e acessível
+
+Seja sempre positivo, encorajador e prático nas suas respostas. Use emojis ocasionalmente para tornar a conversa mais amigável.
+
+Responda em português brasileiro de forma clara e concisa.`
+
+    const userPrompt = `${message}${contextInfo}`
+
+    const fullPrompt = `${systemPrompt}\n\nUsuário: ${userPrompt}\n\nAssistente:`
+
+    const result = await model.generateContent(fullPrompt)
+
+    const response = result.response
+    const text = response.text()
+
+    return text || 'Desculpe, não consegui gerar uma resposta. Tente novamente.'
+
+  } catch (error: any) {
+    console.error('Erro ao gerar resposta do chat:', error.message)
+    
+    // Fallback com resposta genérica
+    return 'Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente em alguns instantes. Se o problema persistir, verifique se a API Gemini está configurada corretamente.'
   }
 }

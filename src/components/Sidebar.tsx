@@ -1,19 +1,18 @@
 import { NavLink } from 'react-router-dom'
 import { 
   BarChart3, 
-  TrendingUp,
-  Wallet
+  DollarSign,
+  CreditCard,
+  ShoppingCart,
+  Settings
 } from 'lucide-react'
 
 const menuItems = [
   { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
-  { path: '/monthly-expenses', label: 'Gastos Mensais', icon: TrendingUp },
-  { path: '/expenses-history', label: 'Histórico de Gastos', icon: BarChart3 },
-  { path: '/investments', label: 'Investimentos', icon: Wallet },
-  { path: '/goals', label: 'Planejamento/Metas', icon: TrendingUp },
-  { path: '/summary-report', label: 'Resumo Geral', icon: BarChart3 },
-  { path: '/transactions', label: 'Transações', icon: TrendingUp },
-  { path: '/accounts', label: 'Contas', icon: Wallet },
+  { path: '/fixed-expenses', label: 'Gastos Fixos', icon: DollarSign },
+  { path: '/installments', label: 'Parcelamentos', icon: CreditCard },
+  { path: '/variable-expenses', label: 'Gastos Correntes', icon: ShoppingCart },
+  { path: '/admin', label: 'Painel Admin', icon: Settings },
 ]
 
 interface SidebarProps {
@@ -75,7 +74,7 @@ export default function Sidebar({ onItemClick }: SidebarProps = {}) {
           color: 'rgba(255, 255, 255, 0.6)',
           textAlign: 'center'
         }}>
-          Organizze Planner v1.0
+          Organizze Planner v2.0
         </div>
       </div>
     </aside>

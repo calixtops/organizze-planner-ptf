@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import api from '../services/api'
-import { Transaction, Account, CreditCard } from '../types'
+import api, { groupsService } from '../services/api'
+import { Transaction, Account, CreditCard, Group } from '../types'
 import TransactionForm from '../components/transactions/TransactionForm'
 import TransactionTable from '../components/transactions/TransactionTable'
 import TransactionFilters from '../components/transactions/TransactionFilters'
@@ -15,6 +15,7 @@ export default function Transactions() {
   const [transactions, setTransactions] = useState<PopulatedTransaction[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [creditCards, setCreditCards] = useState<CreditCard[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<PopulatedTransaction | null>(null)
@@ -22,10 +23,12 @@ export default function Transactions() {
     page: 1,
     limit: 20,
     type: '',
+    nature: '',
     category: '',
     status: '',
     accountId: '',
     creditCardId: '',
+    groupId: '',
     startDate: '',
     endDate: ''
   })
@@ -39,6 +42,18 @@ export default function Transactions() {
   useEffect(() => {
     fetchData()
   }, [filters])
+
+  useEffect(() => {
+    const loadGroups = async () => {
+      try {
+        const response = await groupsService.getAll()
+        setGroups(response.data.groups || [])
+      } catch (error) {
+        console.error('Erro ao carregar grupos:', error)
+      }
+    }
+    loadGroups()
+  }, [])
 
   const fetchData = async () => {
     try {
@@ -144,6 +159,7 @@ export default function Transactions() {
           filters={filters}
           accounts={accounts}
           creditCards={creditCards}
+          groups={groups}
           onFiltersChange={handleFiltersChange}
         />
       </div>
@@ -155,6 +171,7 @@ export default function Transactions() {
         pagination={pagination}
         onPageChange={handlePageChange}
         loading={loading}
+        groupMap={Object.fromEntries(groups.map(g => [g._id, g.name]))}
       />
 
       {showForm && (
@@ -162,6 +179,7 @@ export default function Transactions() {
           transaction={editingTransaction}
           accounts={accounts}
           creditCards={creditCards}
+          groups={groups}
           onSuccess={editingTransaction ? handleTransactionUpdated : handleTransactionCreated}
           onClose={handleCloseForm}
         />

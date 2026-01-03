@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../../services/api'
-import { Transaction, Account, CreditCard, AISuggestion } from '../../types'
+import { Transaction, Account, CreditCard, AISuggestion, Group } from '../../types'
 
 interface PopulatedTransaction extends Omit<Transaction, 'accountId' | 'creditCardId'> {
   accountId?: Account
@@ -13,6 +13,7 @@ interface TransactionFormProps {
   transaction?: PopulatedTransaction | null
   accounts: Account[]
   creditCards: CreditCard[]
+  groups?: Group[]
   onSuccess: (transaction: PopulatedTransaction) => void
   onClose: () => void
 }
@@ -21,6 +22,7 @@ export default function TransactionForm({
   transaction, 
   accounts, 
   creditCards, 
+  groups = [],
   onSuccess, 
   onClose 
 }: TransactionFormProps) {
@@ -28,11 +30,13 @@ export default function TransactionForm({
     description: '',
     amount: '',
     type: 'expense' as 'income' | 'expense',
+    nature: 'variable' as 'fixed' | 'variable',
     category: '',
     status: 'paid' as 'paid' | 'pending',
     date: new Date().toISOString().split('T')[0],
     accountId: '',
-    creditCardId: ''
+    creditCardId: '',
+    groupId: ''
   })
   
   const [loading, setLoading] = useState(false)
@@ -46,11 +50,13 @@ export default function TransactionForm({
         description: transaction.description,
         amount: transaction.amount.toString(),
         type: transaction.type,
+        nature: transaction.nature || 'variable',
         category: transaction.category,
         status: transaction.status,
         date: new Date(transaction.date).toISOString().split('T')[0],
         accountId: typeof transaction.accountId === 'string' ? transaction.accountId : transaction.accountId?._id || '',
-        creditCardId: typeof transaction.creditCardId === 'string' ? transaction.creditCardId : transaction.creditCardId?._id || ''
+        creditCardId: typeof transaction.creditCardId === 'string' ? transaction.creditCardId : transaction.creditCardId?._id || '',
+        groupId: transaction.groupId || ''
       })
     }
   }, [transaction])
@@ -70,7 +76,8 @@ export default function TransactionForm({
         ...formData,
         amount: parseFloat(formData.amount),
         accountId: formData.accountId || undefined,
-        creditCardId: formData.creditCardId || undefined
+        creditCardId: formData.creditCardId || undefined,
+        groupId: formData.groupId || undefined
       }
 
       let response
@@ -330,6 +337,19 @@ export default function TransactionForm({
             </div>
 
             <div className="form-group">
+              <label className="form-label">Natureza</label>
+              <select
+                name="nature"
+                className="form-select"
+                value={formData.nature}
+                onChange={handleInputChange}
+              >
+                <option value="variable">Variável</option>
+                <option value="fixed">Fixo</option>
+              </select>
+            </div>
+
+            <div className="form-group">
               <label className="form-label">Status</label>
               <select
                 name="status"
@@ -353,6 +373,21 @@ export default function TransactionForm({
               onChange={handleInputChange}
               required
             />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Grupo (opcional)</label>
+            <select
+              name="groupId"
+              className="form-select"
+              value={formData.groupId}
+              onChange={handleInputChange}
+            >
+              <option value="">Pessoal</option>
+              {groups?.map((group: Group) => (
+                <option key={group._id} value={group._id}>{group.name}</option>
+              ))}
+            </select>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

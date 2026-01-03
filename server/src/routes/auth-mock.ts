@@ -28,7 +28,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { userId: mockUser._id },
-      process.env.JWT_SECRET || 'mock-secret',
+      (process.env.JWT_SECRET || 'mock-secret') as jwt.Secret,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     )
 
@@ -72,7 +72,7 @@ router.post('/register', async (req, res) => {
 
     const token = jwt.sign(
       { userId: mockUser._id },
-      process.env.JWT_SECRET || 'mock-secret',
+      (process.env.JWT_SECRET || 'mock-secret') as jwt.Secret,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     )
 

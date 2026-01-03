@@ -4,6 +4,7 @@ import Account from '../models/Account.js'
 import CreditCard from '../models/CreditCard.js'
 import { authenticateToken } from '../middleware/auth.js'
 import mongoose from 'mongoose'
+import Membership from '../models/Membership.js'
 
 const router = express.Router()
 
@@ -17,15 +18,31 @@ const isMongoConnected = () => {
 // @access  Private
 router.post('/', authenticateToken, async (req, res, next) => {
   try {
+    console.log('📝 Criando transação:', JSON.stringify(req.body, null, 2))
+    
+    const { groupId } = req.body
+
+    if (groupId) {
+      const membership = await Membership.findOne({ userId: req.user!._id, groupId })
+      if (!membership) {
+        return res.status(403).json({ error: 'Você não tem acesso a este grupo' })
+      }
+    }
+
     const transactionData = {
       ...req.body,
-      userId: req.user!._id
+      userId: req.user!._id,
+      nature: req.body.nature || 'variable'
     }
+
+    console.log('💾 Dados que serão salvos:', JSON.stringify(transactionData, null, 2))
 
     if (isMongoConnected()) {
       // Salvar no MongoDB
       const transaction = new Transaction(transactionData)
       const savedTransaction = await transaction.save()
+      
+      console.log('✅ Transação salva com sucesso:', savedTransaction._id)
       
       res.status(201).json({
         success: true,
@@ -67,11 +84,31 @@ router.get('/', authenticateToken, async (req, res, next) => {
       const limit = parseInt(req.query.limit as string) || 20
       const skip = (page - 1) * limit
       
-      const filters: any = { userId: req.user!._id }
+      const filters: any = {}
+
+      const groupId = req.query.groupId as string | undefined
+      if (groupId) {
+        const membership = await Membership.findOne({ userId: req.user!._id, groupId })
+        if (!membership) {
+          return res.status(403).json({ error: 'Você não tem acesso a este grupo' })
+        }
+        filters.groupId = groupId
+      } else {
+        filters.userId = req.user!._id
+      }
       
       if (req.query.type) filters.type = req.query.type
+      if (req.query.nature) filters.nature = req.query.nature
       if (req.query.category) filters.category = new RegExp(req.query.category as string, 'i')
       if (req.query.status) filters.status = req.query.status
+      if (req.query.isFamily !== undefined) {
+        filters.isFamily = req.query.isFamily === 'true'
+      }
+      if (req.query.startDate || req.query.endDate) {
+        filters.date = {}
+        if (req.query.startDate) filters.date.$gte = new Date(req.query.startDate as string)
+        if (req.query.endDate) filters.date.$lte = new Date(req.query.endDate as string)
+      }
       
       const transactions = await Transaction.find(filters)
         .sort({ date: -1 })
@@ -110,9 +147,18 @@ router.get('/', authenticateToken, async (req, res, next) => {
 // @access  Private
 router.get('/summary/dashboard', authenticateToken, async (req, res, next) => {
   try {
+    const groupId = req.query.groupId as string | undefined
+
+    if (groupId) {
+      const membership = await Membership.findOne({ userId: req.user!._id, groupId })
+      if (!membership) {
+        return res.status(403).json({ error: 'Você não tem acesso a este grupo' })
+      }
+    }
+
     if (isMongoConnected()) {
       // Buscar dados reais do MongoDB
-      const summary = await Transaction.getDashboardSummary(req.user!._id)
+      const summary = await (Transaction as any).getDashboardSummary(req.user!._id, { groupId })
       res.json(summary)
     } else {
       // Fallback: dados mock

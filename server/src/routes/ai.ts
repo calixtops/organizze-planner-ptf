@@ -1,7 +1,7 @@
 import express from 'express'
 import { authenticateToken } from '../middleware/auth.js'
 import { validateAISuggestion } from '../middleware/validation.js'
-import { suggestTransactionCategory, learnFromFeedback } from '../services/aiService.js'
+import { suggestTransactionCategory, learnFromFeedback, chatWithAssistant } from '../services/aiService.js'
 
 const router = express.Router()
 
@@ -84,6 +84,29 @@ router.get('/categories', authenticateToken, async (req, res, next) => {
     }
 
     res.json(categories)
+  } catch (error: any) {
+    next(error)
+  }
+})
+
+// @route   POST /api/ai/chat
+// @desc    Chat com assistente financeiro
+// @access  Private
+router.post('/chat', authenticateToken, async (req, res, next) => {
+  try {
+    const { message, userContext } = req.body
+
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({
+        error: 'Mensagem é obrigatória'
+      })
+    }
+
+    const response = await chatWithAssistant(message.trim(), userContext)
+
+    res.json({
+      response
+    })
   } catch (error: any) {
     next(error)
   }
