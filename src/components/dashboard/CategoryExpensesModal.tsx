@@ -342,7 +342,7 @@ export default function CategoryExpensesModal({
                             fontSize: '11px',
                             fontWeight: 'bold'
                           }}>
-                            Pagado por: {expense.paidBy}
+                            Pago por: {expense.paidBy}
                           </span>
                         </div>
                       )}

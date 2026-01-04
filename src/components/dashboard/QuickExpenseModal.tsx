@@ -4,6 +4,9 @@ import api, { familyMembersService, installmentsService } from '../../services/a
 
 interface QuickExpenseModalProps {
   onExpenseAdded?: () => void
+  isOpen?: boolean
+  onClose?: () => void
+  triggerButton?: React.ReactNode
 }
 
 const CATEGORIES = [
@@ -21,8 +24,26 @@ const CATEGORIES = [
 
 type ExpenseType = 'fixed' | 'variable' | 'installment'
 
-export default function QuickExpenseModal({ onExpenseAdded }: QuickExpenseModalProps) {
-  const [isOpen, setIsOpen] = useState(false)
+export default function QuickExpenseModal({ 
+  onExpenseAdded, 
+  isOpen: externalIsOpen, 
+  onClose: externalOnClose,
+  triggerButton 
+}: QuickExpenseModalProps) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen
+  
+  const setIsOpen = (value: boolean) => {
+    if (externalIsOpen !== undefined) {
+      // Se controlado externamente, chamar onClose quando fechar
+      if (!value && externalOnClose) {
+        externalOnClose()
+      }
+    } else {
+      // Se controlado internamente, usar o estado interno
+      setInternalIsOpen(value)
+    }
+  }
   const [loading, setLoading] = useState(false)
   const [expenseType, setExpenseType] = useState<ExpenseType>('variable')
   const [members, setMembers] = useState<Array<{ _id: string, name: string, color: string }>>([])
@@ -183,7 +204,8 @@ export default function QuickExpenseModal({ onExpenseAdded }: QuickExpenseModalP
     }
   }
 
-  if (!isOpen) {
+  // Se isOpen é controlado externamente, não mostrar o botão flutuante
+  if (!isOpen && externalIsOpen === undefined) {
     return (
       <button
         onClick={() => setIsOpen(true)}
@@ -217,6 +239,11 @@ export default function QuickExpenseModal({ onExpenseAdded }: QuickExpenseModalP
         <Plus size={28} />
       </button>
     )
+  }
+
+  // Se isOpen é controlado externamente e está fechado, não renderizar nada
+  if (!isOpen && externalIsOpen !== undefined) {
+    return null
   }
 
   return (

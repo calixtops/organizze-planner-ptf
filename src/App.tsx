@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import FixedExpenses from './pages/FixedExpenses'
 import VariableExpenses from './pages/VariableExpenses'
 import Installments from './pages/Installments'
+import Transactions from './pages/Transactions'
 import Admin from './pages/Admin'
 import Layout from './components/Layout'
 
@@ -42,6 +43,7 @@ function AppRoutes() {
       >
         <Route index element={<Navigate to="/dashboard" />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="transactions" element={<Transactions />} />
         <Route path="fixed-expenses" element={<FixedExpenses />} />
         <Route path="installments" element={<Installments />} />
         <Route path="variable-expenses" element={<VariableExpenses />} />
