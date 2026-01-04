@@ -33,16 +33,42 @@ app.use(compression())
 app.use(limiter)
 
 // CORS configuration
-const allowedOrigins = process.env.CORS_ORIGIN ? 
-  [...process.env.CORS_ORIGIN.split(','), 'http://localhost:3000', 'http://localhost:3001'] : 
-  ['http://localhost:3000', 'http://localhost:3001']
-
+// Em produção no Vercel, aceitar requisições do mesmo domínio
 app.use(cors({
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    if (!origin) return callback(null, true)
+    // Permitir requisições sem origin (ex: mobile apps, Postman, server-to-server)
+    if (!origin) {
+      return callback(null, true)
+    }
+    
+    // Em produção (Vercel), aceitar requisições do mesmo domínio
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
+      // Aceitar qualquer origem do Vercel ou domínio configurado
+      const isVercelDomain = /^https:\/\/.*\.vercel\.app/.test(origin)
+      const isConfiguredOrigin = process.env.CORS_ORIGIN?.split(',').includes(origin)
+      
+      if (isVercelDomain || isConfiguredOrigin) {
+        return callback(null, true)
+      }
+      
+      // Se CORS_ORIGIN não estiver configurado, aceitar qualquer origem em produção
+      if (!process.env.CORS_ORIGIN) {
+        console.log(`✅ Permitindo origem em produção: ${origin}`)
+        return callback(null, true)
+      }
+    }
+    
+    // Em desenvolvimento, verificar lista de origens permitidas
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [])
+    ]
+    
     if (allowedOrigins.includes(origin)) {
       callback(null, true)
     } else {
+      console.warn(`⚠️  Origem bloqueada por CORS: ${origin}`)
       callback(new Error('Not allowed by CORS'))
     }
   },
