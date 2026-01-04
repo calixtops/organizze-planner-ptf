@@ -21,6 +21,15 @@
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["server/**/*", "api/**/*", "node_modules", "dist", "**/*.test.ts", "**/*.test.tsx"],
+  "exclude": [
+    "server",
+    "api",
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "server/**/*",
+    "api/**/*"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

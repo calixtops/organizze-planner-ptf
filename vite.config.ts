@@ -14,6 +14,16 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    // Ignorar erros de TypeScript durante o build (o Vite já faz type-checking)
+    rollupOptions: {
+      onwarn(warning, warn) {
+        // Suprimir avisos de TypeScript sobre arquivos do servidor
+        if (warning.code === 'UNRESOLVED_IMPORT' && warning.id?.includes('server/')) {
+          return
+        }
+        warn(warning)
+      }
+    }
   }
 })

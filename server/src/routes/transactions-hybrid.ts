@@ -104,6 +104,9 @@ router.get('/', authenticateToken, async (req, res, next) => {
       if (req.query.isFamily !== undefined) {
         filters.isFamily = req.query.isFamily === 'true'
       }
+      if (req.query.paidBy) {
+        filters.paidBy = req.query.paidBy
+      }
       if (req.query.startDate || req.query.endDate) {
         filters.date = {}
         if (req.query.startDate) filters.date.$gte = new Date(req.query.startDate as string)

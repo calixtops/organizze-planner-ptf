@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { FamilyMember } from '../../types'
 import { formatCurrency } from '../../utils/format'
+import MemberExpensesModal from './MemberExpensesModal'
 
 interface MemberExpensesProps {
   memberExpenses: Array<{
@@ -13,40 +14,56 @@ interface MemberExpensesProps {
 }
 
 export default function MemberExpenses({ memberExpenses, members, totalExpenses }: MemberExpensesProps) {
+  const [selectedMember, setSelectedMember] = useState<string | null>(null)
+
   if (memberExpenses.length === 0) {
     return null
   }
 
   return (
-    <div style={{
-      backgroundColor: 'white',
-      padding: '25px',
-      borderRadius: '12px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-      marginTop: '20px'
-    }}>
-      <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: 'bold' }}>
-        👥 Gastos por Membro da Família
-      </h3>
-      
-      <div style={{ display: 'grid', gap: '15px' }}>
-        {memberExpenses.map((me, idx) => {
-          const member = members.find(m => m.name === me.member)
-          const percentage = totalExpenses > 0 ? (me.amount / totalExpenses * 100).toFixed(1) : 0
-          
-          return (
-            <div
-              key={idx}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '15px',
-                padding: '15px',
-                borderRadius: '8px',
-                backgroundColor: '#f8f9fa',
-                border: `2px solid ${member?.color || '#95a5a6'}20`
-              }}
-            >
+    <>
+      <div style={{
+        backgroundColor: 'white',
+        padding: '25px',
+        borderRadius: '12px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        marginTop: '20px'
+      }}>
+        <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: 'bold' }}>
+          👥 Gastos por Membro da Família
+        </h3>
+        
+        <div style={{ display: 'grid', gap: '15px' }}>
+          {memberExpenses.map((me, idx) => {
+            const member = members.find(m => m.name === me.member)
+            const percentage = totalExpenses > 0 ? (me.amount / totalExpenses * 100).toFixed(1) : 0
+            
+            return (
+              <div
+                key={idx}
+                onClick={() => setSelectedMember(me.member)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '15px',
+                  padding: '15px',
+                  borderRadius: '8px',
+                  backgroundColor: '#f8f9fa',
+                  border: `2px solid ${member?.color || '#95a5a6'}20`,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f0f0f0'
+                  e.currentTarget.style.borderColor = member?.color || '#95a5a6'
+                  e.currentTarget.style.transform = 'translateX(4px)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f8f9fa'
+                  e.currentTarget.style.borderColor = `${member?.color || '#95a5a6'}20`
+                  e.currentTarget.style.transform = 'translateX(0)'
+                }}
+              >
               <div style={{
                 width: '50px',
                 height: '50px',
@@ -98,22 +115,32 @@ export default function MemberExpenses({ memberExpenses, members, totalExpenses 
             </div>
           )
         })}
+        </div>
+
+        <div style={{
+          marginTop: '20px',
+          padding: '15px',
+          backgroundColor: '#34495e',
+          color: 'white',
+          borderRadius: '8px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span style={{ fontSize: '16px', fontWeight: 'bold' }}>Total Geral</span>
+          <span style={{ fontSize: '24px', fontWeight: 'bold' }}>{formatCurrency(totalExpenses)}</span>
+        </div>
       </div>
 
-      <div style={{
-        marginTop: '20px',
-        padding: '15px',
-        backgroundColor: '#34495e',
-        color: 'white',
-        borderRadius: '8px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <span style={{ fontSize: '16px', fontWeight: 'bold' }}>Total Geral</span>
-        <span style={{ fontSize: '24px', fontWeight: 'bold' }}>{formatCurrency(totalExpenses)}</span>
-      </div>
-    </div>
+      {/* Modal de Gastos do Membro */}
+      {selectedMember && (
+        <MemberExpensesModal
+          memberName={selectedMember}
+          members={members}
+          onClose={() => setSelectedMember(null)}
+        />
+      )}
+    </>
   )
 }
 
