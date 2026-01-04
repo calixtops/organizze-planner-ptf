@@ -12,7 +12,6 @@ export interface IInstallment extends Document {
   currentPaid: number // Quantas parcelas já foram pagas
   status: 'active' | 'completed' | 'cancelled'
   paymentDay: number // Dia do mês para pagamento (1-31)
-  groupId?: string // Mantido para compatibilidade
   isFamily?: boolean // true = Familiar, false/undefined = Pessoal
   paidBy?: string // Nome ou ID de quem está pagando o parcelamento
   createdAt: Date
@@ -34,7 +33,6 @@ const InstallmentSchema = new Schema<IInstallment>({
     default: 'active' 
   },
   paymentDay: { type: Number, required: true, min: 1, max: 31 },
-  groupId: { type: String, ref: 'Group' },
   isFamily: { type: Boolean, default: false },
   paidBy: { type: String, trim: true, maxlength: 100 }
 }, { 
