@@ -47,6 +47,10 @@ export interface Transaction {
   paidBy?: string
   aiCategory?: string
   aiExplanation?: string
+  installmentInfo?: {
+    current: number
+    total: number
+  }
   createdAt: string
   updatedAt: string
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { TrendingDown, RefreshCw, TrendingUp } from 'lucide-react'
 import api, { groupsService, familyMembersService } from '../services/api'
 import { DashboardData, Group, FamilyMember, Transaction, Installment } from '../types'
 import { installmentsService } from '../services/api'
@@ -149,16 +150,16 @@ export default function Dashboard() {
 
       // Calcular totais por tipo
       const fixed = sorted
-        .filter(t => t.nature === 'fixed' && !t.installmentInfo)
-        .reduce((sum, t) => sum + t.amount, 0)
+        .filter((t: Transaction) => t.nature === 'fixed' && !t.installmentInfo)
+        .reduce((sum: number, t: Transaction) => sum + t.amount, 0)
       
       const variable = sorted
-        .filter(t => t.nature === 'variable')
-        .reduce((sum, t) => sum + t.amount, 0)
+        .filter((t: Transaction) => t.nature === 'variable')
+        .reduce((sum: number, t: Transaction) => sum + t.amount, 0)
       
       const installments = sorted
-        .filter(t => t.installmentInfo)
-        .reduce((sum, t) => sum + t.amount, 0)
+        .filter((t: Transaction) => t.installmentInfo)
+        .reduce((sum: number, t: Transaction) => sum + t.amount, 0)
 
       setFixedExpenses(fixed)
       setVariableExpenses(variable)

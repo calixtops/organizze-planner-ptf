@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { transactionsService, groupsService, installmentsService } from '../services/api'
-import { Transaction, Group, Installment } from '../types'
+import { transactionsService, groupsService, installmentsService, accountsService, creditCardsService } from '../services/api'
+import { Transaction, Group, Installment, Account, CreditCard } from '../types'
 import { formatCurrency, formatDate } from '../utils/format'
 import TransactionForm from '../components/transactions/TransactionForm'
 
@@ -11,6 +11,8 @@ export default function MonthlyExpenses() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [installments, setInstallments] = useState<Installment[]>([])
   const [groups, setGroups] = useState<Group[]>([])
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [creditCards, setCreditCards] = useState<CreditCard[]>([])
   const [selectedGroup, setSelectedGroup] = useState<string>('')
   const [selectedMonth, setSelectedMonth] = useState<string>(
     new Date().toISOString().slice(0, 7) // YYYY-MM
@@ -20,6 +22,8 @@ export default function MonthlyExpenses() {
 
   useEffect(() => {
     loadGroups()
+    loadAccounts()
+    loadCreditCards()
   }, [])
 
   useEffect(() => {
@@ -35,6 +39,26 @@ export default function MonthlyExpenses() {
       setGroups(response.data)
     } catch (error) {
       console.error('Erro ao carregar grupos:', error)
+    }
+  }
+
+  const loadAccounts = async () => {
+    try {
+      const response = await accountsService.getAll()
+      setAccounts(response.data.accounts || response.data || [])
+    } catch (error) {
+      console.error('Erro ao carregar contas:', error)
+      setAccounts([])
+    }
+  }
+
+  const loadCreditCards = async () => {
+    try {
+      const response = await creditCardsService.getAll()
+      setCreditCards(response.data.creditCards || response.data || [])
+    } catch (error) {
+      console.error('Erro ao carregar cartões:', error)
+      setCreditCards([])
     }
   }
 
@@ -491,8 +515,15 @@ export default function MonthlyExpenses() {
               </button>
             </div>
             <TransactionForm
-              transaction={editingTransaction}
+              transaction={editingTransaction ? {
+                ...editingTransaction,
+                accountId: editingTransaction.accountId ? accounts.find(a => a._id === editingTransaction.accountId) : undefined,
+                creditCardId: editingTransaction.creditCardId ? creditCards.find(c => c._id === editingTransaction.creditCardId) : undefined
+              } : undefined}
+              accounts={accounts}
+              creditCards={creditCards}
               groups={groups}
+              onSuccess={() => handleFormClose()}
               onClose={handleFormClose}
             />
           </div>
