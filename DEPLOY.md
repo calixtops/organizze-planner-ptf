@@ -69,8 +69,8 @@ MONGODB_DB=planner
 JWT_SECRET=seu-jwt-secret-super-seguro-aqui
 JWT_EXPIRES_IN=7d
 
-# OpenAI (opcional)
-OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Gemini AI (para Assistente Financeiro)
+GEMINI_API_KEY=AIzaSyD_gvpLtsQ0rnpHiAIaNp9xa57oZThYqGY
 
 # Ambiente
 NODE_ENV=production

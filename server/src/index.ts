@@ -151,11 +151,13 @@ app.use('*', (req, res) => {
   })
 })
 
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor rodando na porta ${PORT}`)
-  console.log(`📊 Ambiente: ${process.env.NODE_ENV || 'development'}`)
-  console.log(`🔗 URL: http://localhost:${PORT}`)
-})
+// Iniciar servidor apenas se não estiver no Vercel (serverless)
+if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor rodando na porta ${PORT}`)
+    console.log(`📊 Ambiente: ${process.env.NODE_ENV || 'development'}`)
+    console.log(`🔗 URL: http://localhost:${PORT}`)
+  })
+}
 
 export default app

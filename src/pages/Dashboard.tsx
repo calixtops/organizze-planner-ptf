@@ -15,7 +15,6 @@ import InstallmentsStatus from '../components/dashboard/InstallmentsStatus'
 import CategoryBreakdown from '../components/dashboard/CategoryBreakdown'
 import FinancialInsights from '../components/ai/FinancialInsights'
 import LoadingSpinner from '../components/LoadingSpinner'
-import { RefreshCw, TrendingUp, TrendingDown, Bot, Sparkles, Upload } from 'lucide-react'
 import AIChat from '../components/ai/AIChat'
 import TransactionImporter from '../components/import/TransactionImporter'
 
@@ -381,220 +380,19 @@ export default function Dashboard() {
   return (
     <>
         <div style={{ 
-        maxWidth: '1400px', 
+        maxWidth: '1600px', 
         margin: '0 auto',
-        padding: '0 1rem'
+        width: '100%'
       }}>
-        {/* Header */}
-        <div className="dashboard-header" style={{ 
-          marginBottom: '2rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '1rem'
-        }}>
-          <div>
-            <h1 className="dashboard-title" style={{
-              color: 'var(--primary-dark)',
-              fontSize: '2.5rem',
-              fontWeight: '800',
-              marginBottom: '0.5rem',
-              background: 'linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-orange) 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text'
-            }}>
-              Dashboard
-            </h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <p style={{
-                color: 'var(--gray-600)',
-                fontSize: '1.125rem',
-                fontWeight: '500',
-                margin: 0
-              }}>
-                Visão geral das suas finanças
-              </p>
-              <select
-                value={groupId}
-                onChange={(e) => setGroupId(e.target.value)}
-                style={{
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: '8px',
-                  border: '1px solid var(--gray-200)',
-                  backgroundColor: 'white',
-                  fontWeight: 600
-                }}
-              >
-                <option value="">Pessoal</option>
-                {groups.map((g) => (
-                  <option key={g._id} value={g._id}>{g.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setShowImporter(true)}
-              style={{
-                padding: '0.75rem 1rem',
-                backgroundColor: 'var(--success)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#059669'
-                e.currentTarget.style.transform = 'translateY(-1px)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--success)'
-                e.currentTarget.style.transform = 'translateY(0)'
-              }}
-            >
-              <Upload size={16} />
-              Importar C6 Bank
-            </button>
-            
-            <button
-              onClick={() => setShowIncomeForm(true)}
-              style={{
-                backgroundColor: 'var(--success)',
-                color: 'white',
-                border: 'none',
-                padding: '0.75rem 1.5rem',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#059669'
-                e.currentTarget.style.transform = 'translateY(-1px)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--success)'
-                e.currentTarget.style.transform = 'translateY(0)'
-              }}
-            >
-              💰 Adicionar Receita
-            </button>
-            
-            <button
-              onClick={handleClearAllTransactions}
-              style={{
-                backgroundColor: 'var(--error)',
-                color: 'white',
-                border: 'none',
-                padding: '0.75rem 1.5rem',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#dc2626'
-                e.currentTarget.style.transform = 'translateY(-1px)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--error)'
-                e.currentTarget.style.transform = 'translateY(0)'
-              }}
-            >
-              🗑️ Limpar Transações
-            </button>
-            
-            <button
-              onClick={() => setShowAIChat(true)}
-              style={{
-                padding: '0.75rem 1rem',
-                backgroundColor: 'var(--accent-orange)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#e04a1f'
-                e.currentTarget.style.transform = 'translateY(-1px)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--accent-orange)'
-                e.currentTarget.style.transform = 'translateY(0)'
-              }}
-            >
-              <Bot size={16} />
-              Assistente IA
-            </button>
-            
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              style={{
-                padding: '0.75rem 1rem',
-                backgroundColor: 'var(--white)',
-                color: 'var(--gray-600)',
-                border: '2px solid var(--gray-200)',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                cursor: refreshing ? 'not-allowed' : 'pointer',
-                opacity: refreshing ? 0.7 : 1,
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}
-              onMouseEnter={(e) => {
-                if (!refreshing) {
-                  e.currentTarget.style.borderColor = 'var(--accent-orange)'
-                  e.currentTarget.style.color = 'var(--accent-orange)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!refreshing) {
-                  e.currentTarget.style.borderColor = 'var(--gray-200)'
-                  e.currentTarget.style.color = 'var(--gray-600)'
-                }
-              }}
-            >
-              <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-              {refreshing ? 'Atualizando...' : 'Atualizar'}
-            </button>
-          </div>
-        </div>
 
         {/* Nova Seção: Análise Visual dos Gastos Mensais */}
-        <div style={{ marginBottom: '2rem' }}>
+        <div style={{ marginBottom: '3rem' }}>
           {/* Cards de Resumo */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '20px',
-            marginBottom: '2rem'
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '28px',
+            marginBottom: '3rem'
           }}>
             <ExpenseSummaryCard
               title="Gastos Fixos"
@@ -629,9 +427,9 @@ export default function Dashboard() {
           {/* Grid de Análise Visual */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-            gap: '20px',
-            marginBottom: '2rem'
+            gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
+            gap: '28px',
+            marginBottom: '3rem'
           }}>
             {/* Distribuição dos Gastos */}
             <ExpenseDistribution
@@ -661,37 +459,38 @@ export default function Dashboard() {
         {personalExpenses > 0 && (
           <div style={{
             backgroundColor: 'white',
-            padding: '25px',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            marginTop: '20px'
+            padding: '32px',
+            borderRadius: '16px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+            marginTop: '32px',
+            marginBottom: '32px'
           }}>
-            <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', fontWeight: 'bold' }}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '24px', fontWeight: 'bold', color: 'var(--gray-800)' }}>
               👤 Gastos Pessoais
             </h3>
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              padding: '20px',
+              padding: '28px',
               backgroundColor: '#f8f9fa',
-              borderRadius: '8px'
+              borderRadius: '12px'
             }}>
-              <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#666' }}>
+              <span style={{ fontSize: '20px', fontWeight: '600', color: 'var(--gray-700)' }}>
                 Total de Gastos Pessoais
               </span>
-              <span style={{ fontSize: '32px', fontWeight: 'bold', color: '#e74c3c' }}>
+              <span style={{ fontSize: '40px', fontWeight: 'bold', color: '#e74c3c' }}>
                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(personalExpenses)}
               </span>
             </div>
-            <p style={{ marginTop: '15px', fontSize: '13px', color: '#999', textAlign: 'center' }}>
+            <p style={{ marginTop: '20px', fontSize: '14px', color: 'var(--gray-500)', textAlign: 'center' }}>
               Gastos marcados como "Pessoal" não entram nas KPIs familiares
             </p>
           </div>
         )}
 
         {/* Tabela de Gastos Mensais */}
-        <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+        <div style={{ marginTop: '32px', marginBottom: '32px' }}>
           <MonthlyExpensesTable 
             expenses={monthlyExpenses}
             members={members}

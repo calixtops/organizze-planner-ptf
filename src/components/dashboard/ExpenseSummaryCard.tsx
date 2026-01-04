@@ -24,21 +24,21 @@ export default function ExpenseSummaryCard({
   return (
     <div style={{
       backgroundColor: 'white',
-      borderRadius: '16px',
-      padding: '24px',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+      borderRadius: '20px',
+      padding: '32px',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
       border: `2px solid ${color}20`,
       transition: 'transform 0.2s, box-shadow 0.2s',
       position: 'relative',
       overflow: 'hidden'
     }}
     onMouseEnter={(e) => {
-      e.currentTarget.style.transform = 'translateY(-4px)'
-      e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)'
+      e.currentTarget.style.transform = 'translateY(-6px)'
+      e.currentTarget.style.boxShadow = '0 12px 28px rgba(0,0,0,0.15)'
     }}
     onMouseLeave={(e) => {
       e.currentTarget.style.transform = 'translateY(0)'
-      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'
+      e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.1)'
     }}
     >
       {/* Barra colorida no topo */}
@@ -47,36 +47,22 @@ export default function ExpenseSummaryCard({
         top: 0,
         left: 0,
         right: 0,
-        height: '4px',
+        height: '5px',
         backgroundColor: color
       }} />
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-        <div>
-          <div style={{ fontSize: '14px', color: '#666', fontWeight: '500', marginBottom: '8px' }}>
-            {title}
-          </div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold', color: color }}>
-            {formatCurrency(amount)}
-          </div>
-          {subtitle && (
-            <div style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
-              {subtitle}
-            </div>
-          )}
+      <div>
+        <div style={{ fontSize: '16px', color: 'var(--gray-600)', fontWeight: '600', marginBottom: '12px' }}>
+          {title}
         </div>
-        <div style={{
-          fontSize: '36px',
-          width: '60px',
-          height: '60px',
-          borderRadius: '12px',
-          backgroundColor: `${color}15`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          {icon}
+        <div style={{ fontSize: '42px', fontWeight: 'bold', color: color, lineHeight: '1.2' }}>
+          {formatCurrency(amount)}
         </div>
+        {subtitle && (
+          <div style={{ fontSize: '14px', color: 'var(--gray-500)', marginTop: '8px' }}>
+            {subtitle}
+          </div>
+        )}
       </div>
       
       {trend && (

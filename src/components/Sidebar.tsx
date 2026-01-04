@@ -12,7 +12,6 @@ const menuItems = [
   { path: '/fixed-expenses', label: 'Gastos Fixos', icon: DollarSign },
   { path: '/installments', label: 'Parcelamentos', icon: CreditCard },
   { path: '/variable-expenses', label: 'Gastos Correntes', icon: ShoppingCart },
-  { path: '/admin', label: 'Painel Admin', icon: Settings },
 ]
 
 interface SidebarProps {
