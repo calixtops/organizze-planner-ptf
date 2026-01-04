@@ -1,6 +1,23 @@
 import axios from 'axios'
 
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api'
+// Em produção (Vercel), usar URL relativa para rotear para serverless function
+// Em desenvolvimento, usar localhost
+const getApiBaseUrl = () => {
+  // Se VITE_API_URL estiver definida, usar ela
+  if ((import.meta as any).env?.VITE_API_URL) {
+    return (import.meta as any).env.VITE_API_URL
+  }
+  
+  // Se estiver em produção (Vercel), usar URL relativa
+  if (import.meta.env.PROD || window.location.hostname !== 'localhost') {
+    return '/api'
+  }
+  
+  // Em desenvolvimento local, usar localhost
+  return 'http://localhost:5000/api'
+}
+
+const API_BASE_URL = getApiBaseUrl()
 
 // Configuração base do axios
 const api = axios.create({
